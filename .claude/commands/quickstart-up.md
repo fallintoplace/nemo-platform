@@ -1,7 +1,7 @@
 ---
-description: Build and start the NeMo Platform quickstart environment with docker-compose
+description: Start local NeMo Platform services or run a task module
 ---
-Start the NeMo Platform quickstart environment with the specified services and controllers
+Start local NeMo Platform services with optional service/controller selection, or run a task module
 
 ## Workflow
 
@@ -12,15 +12,16 @@ Determine the command based on options, each line being one example on how to ru
   export DATABASE_PATH=$HOME/.local/share/nemo/nmp-platform.db
   export UVICORN_RELOAD=true
   # Default
-  uv run nemo-platform run --quickstart
+  uv run nemo services run
   # Specific config
-  uv run nemo-platform run --config packages/nmp_platform/config/local.yaml
+  uv run nemo services run --config packages/nmp_platform/config/local.yaml
   # One service
-  uv run nemo-platform run --services hello-world
-  # Jobs service
-  uv run nemo-platform run --controllers jobs
+  uv run nemo services run --services hello-world
+  # Jobs controller
+  uv run nemo services run --controllers jobs
   # Jobs service and controller
-  uv run nemo-platform run --services jobs --controllers jobs
+  uv run nemo services run --services jobs --controllers jobs
+  # Task execution
   uv run nemo-platform run task --task nmp.hello_world.tasks.hello_world
-  uv run nemo-platform run task --task nmp.hello_world.tasks.hello_world --config '{"key": "value"}
+  uv run nemo-platform run task --task nmp.hello_world.tasks.hello_world --config '{"key": "value"}'
 ```
