@@ -108,7 +108,7 @@ def run_pytest(
     if markers:
         marker_expr = " and ".join(markers)
         cmd.extend(["-m", marker_expr])
-    else:
+    elif markers is not None:
         # Default: exclude slow, e2e, and integration tests for unit tests
         cmd.extend(["-m", "not slow and not e2e and not integration"])
 
