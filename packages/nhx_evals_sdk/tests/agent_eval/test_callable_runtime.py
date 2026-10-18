@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -57,3 +58,40 @@ async def test_callable_runtime_captures_exception_as_failed_trial_but_rejects_b
 
     with pytest.raises(TypeError, match="TrialDraft, AgentOutput, or str"):
         await CallableAgentTaskRunner(bad_return_fn).run_tasks([_task("bad")])
+
+
+@pytest.mark.asyncio
+async def test_callable_runtime_bounds_pending_tasks_and_preserves_order() -> None:
+    parallelism = 3
+    task_ids = [f"t{i}" for i in range(32)]
+    started = asyncio.Event()
+    release = asyncio.Event()
+    active = 0
+    peak_active = 0
+
+    async def agent_fn(task: AgentEvalTask) -> str:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        if active == parallelism:
+            started.set()
+        try:
+            await release.wait()
+            return f"answer-{task.id}"
+        finally:
+            active -= 1
+
+    baseline_tasks = asyncio.all_tasks()
+    runner = CallableAgentTaskRunner(agent_fn, parallelism=parallelism)
+    running = asyncio.create_task(runner.run_tasks([_task(task_id) for task_id in task_ids]))
+    try:
+        await asyncio.wait_for(started.wait(), timeout=5)
+        pending_children = asyncio.all_tasks() - baseline_tasks - {running}
+    finally:
+        release.set()
+        trials = await running
+
+    assert len(pending_children) <= parallelism
+    assert peak_active == parallelism
+    assert [trial.task_id for trial in trials] == task_ids
+    assert all(trial.status == AgentEvalTrialStatus.COMPLETED for trial in trials)
