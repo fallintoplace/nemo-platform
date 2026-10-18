@@ -87,7 +87,7 @@ def changed_skill_files(root: Path, base_ref: str) -> list[Path]:
 
 
 def frontmatter(path: Path) -> dict | None:
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8-sig")
     if not text.startswith("---\n"):
         return None
     end = text.find("\n---\n", 4)

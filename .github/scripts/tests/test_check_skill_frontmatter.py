@@ -109,6 +109,12 @@ def test_check_file_passes_for_valid_frontmatter(tmp_path):
     assert check_file(skill) == []
 
 
+def test_check_file_passes_for_utf8_bom_frontmatter(tmp_path):
+    skill = tmp_path / "SKILL.md"
+    skill.write_text("\ufeff" + VALID_FRONTMATTER, encoding="utf-8")
+    assert check_file(skill) == []
+
+
 def test_check_file_flags_missing_author(tmp_path):
     skill = tmp_path / "SKILL.md"
     skill.write_text(MISSING_AUTHOR_FRONTMATTER)
