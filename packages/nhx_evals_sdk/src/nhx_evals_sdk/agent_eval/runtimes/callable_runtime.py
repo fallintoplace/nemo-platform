@@ -79,17 +79,22 @@ class CallableAgentTaskRunner:
     ) -> list[AgentEvalTrial]:
         """Run every task through the callable and return one trial per task, in order."""
         parallelism = self._parallelism if self._parallelism is not None else (config.parallelism if config else 4)
-        semaphore = asyncio.Semaphore(max(1, parallelism))
+        # Shared iteration keeps the number of scheduled tasks bounded by parallelism.
+        indexed_tasks = iter(enumerate(tasks))
+        results: list[AgentEvalTrial | None] = [None] * len(tasks)
 
-        async def run_one(task: AgentEvalTask) -> AgentEvalTrial:
-            async with semaphore:
+        async def worker() -> None:
+            for index, task in indexed_tasks:
                 try:
                     result = await self._agent_fn(task)
                 except Exception as exc:  # noqa: BLE001 - surfaced as a FAILED trial, not a crash
-                    return self._failed_trial(task, exc)
-                return self._completed_trial(task, result)
+                    results[index] = self._failed_trial(task, exc)
+                else:
+                    results[index] = self._completed_trial(task, result)
 
-        return list(await asyncio.gather(*(run_one(task) for task in tasks)))
+        worker_count = min(len(tasks), max(1, parallelism))
+        await asyncio.gather(*(worker() for _ in range(worker_count)))
+        return [result for result in results if result is not None]
 
     def _trial_id(self, task: AgentEvalTask) -> str:
         return f"{task.id}:{self._trial_id_suffix}"
